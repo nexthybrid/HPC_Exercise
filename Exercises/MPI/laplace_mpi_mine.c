@@ -223,3 +223,25 @@ void track_progress(int iteration) {
     }
     printf("\n");
 }
+
+void output(int my_pe , int iteration) {
+    FILE* fp;
+    char filename[50];
+    sprintf(filename,"output%d.txt",iteration);
+    for (int pe = 0; pe <4; pe++) {
+        if (my_pe==pe) {
+            fp = fopen(filename, "a");
+
+            for(int y = 1; y <= ROWS; y++){
+                for(int x = 1; x <= COLUMNS; x++){
+                    fprintf(fp, "%5.2f ",Temperature[y][x]);
+                }
+                fprintf(fp,"\n");
+            }
+
+            fflush(fp);
+            fclose(fp);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+
+}
