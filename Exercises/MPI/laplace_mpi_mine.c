@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
     // do until error is minimal (thermal steady-state reached) or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
-	printf("In while loop of PE# %d on iteration# %d\n", my_PE_num, iteration);
+	//printf("In while loop of PE# %d on iteration# %d\n", my_PE_num, iteration);
         // main calculation: average my four neighbors, including the padding boundaries up and down (except for top and bottom pieces)
         if (my_PE_num == 0) {			//top piece
 		for(i = 1; i <= SEC_ROWS+1; i++) {
@@ -118,36 +118,36 @@ int main(int argc, char *argv[]) {
 			//if (j % 50 == 0) printf("Finished calculating Temperature[%d][j] for PE# %d\n", i, my_PE_num);
                 }
 	}
-	printf("In while loop of PE# %d, finished main calculation on iteration# %d\n", my_PE_num, iteration);
+	//printf("In while loop of PE# %d, finished main calculation on iteration# %d\n", my_PE_num, iteration);
 	// COMMUNICATION PHASE: send and receive padding rows for next iteration
 	if (my_PE_num == 0) {
-		printf("Onto Communication task of PE# %d on iteration# %d\n", my_PE_num, iteration);
+		//printf("Onto Communication task of PE# %d on iteration# %d\n", my_PE_num, iteration);
 		MPI_Send(&Temperature[SEC_ROWS+1][1], COLUMNS, MPI_DOUBLE, 1, 666, MPI_COMM_WORLD);
-		printf("Send from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num, 1, iteration);
+		//printf("Send from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num, 1, iteration);
 		MPI_Recv(&Temperature[SEC_ROWS+1][1], COLUMNS, MPI_DOUBLE, 1, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-		printf("Receive from PE# %d to PE# %d on iteration# %d done!\n", 1, my_PE_num, iteration);
+		//printf("Receive from PE# %d to PE# %d on iteration# %d done!\n", 1, my_PE_num, iteration);
 	} else if (my_PE_num == numprocs-1) {
-		printf("Onto Communication task of PE# %d on iteration# %d\n", my_PE_num, iteration);
+		//printf("Onto Communication task of PE# %d on iteration# %d\n", my_PE_num, iteration);
 		MPI_Send(&Temperature[SEC_ROWS*my_PE_num][1], COLUMNS, MPI_DOUBLE, numprocs-2, 666, MPI_COMM_WORLD);
-		printf("Send from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num, numprocs-2, iteration);
+		//printf("Send from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num, numprocs-2, iteration);
 		MPI_Recv(&Temperature[SEC_ROWS*my_PE_num][1], COLUMNS, MPI_DOUBLE, numprocs-2, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-		printf("Receive from PE# %d to PE# %d on iteration# %d done!\n", numprocs-2, my_PE_num, iteration);
+		//printf("Receive from PE# %d to PE# %d on iteration# %d done!\n", numprocs-2, my_PE_num, iteration);
 	} else {
-		printf("Onto Communication task of PE# %d on iteration# %d\n", my_PE_num, iteration);
+		//printf("Onto Communication task of PE# %d on iteration# %d\n", my_PE_num, iteration);
 		MPI_Send(&Temperature[SEC_ROWS*my_PE_num][1], COLUMNS, MPI_DOUBLE, my_PE_num-1, 666, MPI_COMM_WORLD);
-		printf("Send from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num, my_PE_num-1, iteration);
+		//printf("Send from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num, my_PE_num-1, iteration);
 		MPI_Recv(&Temperature[SEC_ROWS*my_PE_num][1], COLUMNS, MPI_DOUBLE, my_PE_num-1, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-		printf("Receive from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num-1, my_PE_num, iteration);
+		//printf("Receive from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num-1, my_PE_num, iteration);
 		MPI_Send(&Temperature[SEC_ROWS*my_PE_num+SEC_ROWS+1][1], COLUMNS, MPI_DOUBLE, my_PE_num+1, 666, MPI_COMM_WORLD);
-		printf("Send from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num, my_PE_num+1, iteration);
+		//printf("Send from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num, my_PE_num+1, iteration);
 		MPI_Recv(&Temperature[SEC_ROWS*my_PE_num+SEC_ROWS+1][1], COLUMNS, MPI_DOUBLE, my_PE_num+1, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-		printf("Receive from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num+1, my_PE_num, iteration);
+		//printf("Receive from PE# %d to PE# %d on iteration# %d done!\n", my_PE_num+1, my_PE_num, iteration);
 	}
-	printf("In while loop of PE# %d, finished communication phase on iteration# %d\n", my_PE_num, iteration);
+	//printf("In while loop of PE# %d, finished communication phase on iteration# %d\n", my_PE_num, iteration);
 	// set barrier here to make sure all current time-step calculations are synced before moving to next iteration
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	printf("Went past MPI Barrier on PE# %d\n", my_PE_num);
+	//printf("Went past MPI Barrier on PE# %d\n", my_PE_num);
         dt = 0.0; // reset largest temperature change
 
         // copy grid to old grid for next iteration, and find latest dt to see if steady-state is reached
@@ -155,12 +155,13 @@ int main(int argc, char *argv[]) {
             for(j = 1; j <= COLUMNS; j++){
 	      dt = fmax( fabs(Temperature[i][j]-Temperature_last[i][j]), dt);
 	      Temperature_last[i][j] = Temperature[i][j];
+//	      if (i == 995 && j == 995) printf("Temperature_last[995][995]=%f and Temperature_last[1001][1001] = %f\n",Temperature_last[995][995],Temperature_last[1001][1001]);
             }
         }
-	printf("Finished updating Temperature_last grid for next iteration on PE# %d\n", my_PE_num);
+	//printf("Finished updating Temperature_last grid for next iteration on PE# %d\n", my_PE_num);
 
         // periodically print test values
-        if((iteration % 100) == 0 && my_PE_num == 0) {
+        if((iteration % 10) == 0 && my_PE_num == 0) {
  	    track_progress(iteration);
         }
 
@@ -188,8 +189,9 @@ void initialize(int numprocs, int my_PE_num){
     for(i = SEC_ROWS*my_PE_num; i <= SEC_ROWS*my_PE_num+SEC_ROWS+1; i++){
         for (j = 0; j <= COLUMNS+1; j++){
             Temperature_last[i][j] = 0.0;
-	    Temperature_last[i][COLUMNS+1] = my_PE_num/numprocs*100.0 + (100.0/SEC_ROWS)*i;
         }
+	Temperature_last[i][COLUMNS+1] = my_PE_num/numprocs*100.0 + (100.0/ROWS)*i;
+	if(i % 50 == 0) printf("Temperature_last[%d][%d] initialized as %f\n",i,COLUMNS+1,Temperature_last[i][COLUMNS+1]);
     }
 
     printf("Finished step 1, now on the step 2 of initialize function of PE# %d\n", my_PE_num);
@@ -198,6 +200,7 @@ void initialize(int numprocs, int my_PE_num){
     	for(j = 0; j <= COLUMNS+1; j++) {
         	Temperature_last[SEC_ROWS*my_PE_num][j] = 0.0;
         	Temperature_last[SEC_ROWS*my_PE_num+SEC_ROWS+1][j] = (100.0/COLUMNS)*j;
+		if(j % 50 == 0) printf("Temperature_last[%d][%d] initialized as %f\n",COLUMNS+1,j,Temperature_last[COLUMNS+1][j]);
     	}
     } else {
 	for(j = 0; j<= COLUMNS+1; j++) {
@@ -216,7 +219,7 @@ void track_progress(int iteration) {
 
     printf("---------- Iteration number: %d ------------\n", iteration);
     for(i = ROWS-5; i <= ROWS; i++) {
-        printf("[%d,%d]: %5.2f  ", i, i, Temperature[i][i]);
+        printf("[%d,%d]: %5.2f  ", i, i, Temperature_last[i][i]);
     }
     printf("\n");
 }
