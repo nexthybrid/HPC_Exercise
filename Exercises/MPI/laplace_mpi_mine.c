@@ -37,10 +37,10 @@
 double Temperature[ROWS+2][COLUMNS+2];      // temperature grid
 double Temperature_last[ROWS+2][COLUMNS+2]; // temperature grid from last iteration
 
-//   helper routines
+//   helper routines declaration
 void initialize();
 void track_progress(int iter);
-
+void output(int, int);
 
 int main(int argc, char *argv[]) {
 
@@ -161,8 +161,9 @@ int main(int argc, char *argv[]) {
 	//printf("Finished updating Temperature_last grid for next iteration on PE# %d\n", my_PE_num);
 
         // periodically print test values
-        if((iteration % 10) == 0 && my_PE_num == 0) {
- 	    track_progress(iteration);
+        if((iteration % 500) == 0 && my_PE_num == 0) {
+ 	    	track_progress(iteration);
+		output(3,iteration);
         }
 
 	iteration++;
@@ -227,21 +228,22 @@ void track_progress(int iteration) {
 void output(int my_pe , int iteration) {
     FILE* fp;
     char filename[50];
-    sprintf(filename,"output%d.txt",iteration);
+    sprintf(filename,"output%d.csv",iteration);
     for (int pe = 0; pe <4; pe++) {
         if (my_pe==pe) {
             fp = fopen(filename, "a");
 
             for(int y = 1; y <= ROWS; y++){
                 for(int x = 1; x <= COLUMNS; x++){
-                    fprintf(fp, "%5.2f ",Temperature[y][x]);
+                    fprintf(fp, "%5.2f,",Temperature_last[y][x]);
                 }
+		fprintf(fp, "%5.2f",Temperature_last[y][COLUMNS+1]);
                 fprintf(fp,"\n");
             }
 
             fflush(fp);
             fclose(fp);
         }
-        MPI_Barrier(MPI_COMM_WORLD);
-
+        //MPI_Barrier(MPI_COMM_WORLD);
+    }
 }
