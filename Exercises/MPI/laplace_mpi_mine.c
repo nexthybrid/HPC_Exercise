@@ -84,6 +84,7 @@ int main(int argc, char *argv[]) {
     // do until error is minimal (thermal steady-state reached) or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
+	printf("In while loop of PE# %d\n", my_PE_num);
         // main calculation: average my four neighbors, including the padding boundaries up and down (except for top and bottom pieces)
         if (my_PE_num == 0) {
 		for(i = 1; i <= SEC_ROWS+1; i++) {
@@ -107,6 +108,7 @@ int main(int argc, char *argv[]) {
                         }
                 }
 	}
+	printf("In while loop of PE# %d, finished main calculation\n", my_PE_num);
 	// COMMUNICATION PHASE: send and receive padding rows for next iteration
 	if (my_PE_num == 0) {
 		MPI_Send(&Temperature[SEC_ROWS+1][1], COLUMNS, MPI_DOUBLE, 1, 666, MPI_COMM_WORLD);
@@ -120,9 +122,11 @@ int main(int argc, char *argv[]) {
 		MPI_Recv(&Temperature[0][1], COLUMNS, MPI_DOUBLE, my_PE_num-1, 666, MPI_COMM_WORLD, &status);
 		MPI_Recv(&Temperature[SEC_ROWS+1][1], COLUMNS, MPI_DOUBLE, my_PE_num+1, 666, MPI_COMM_WORLD, &status);
 	}
+	printf("In while loop of PE# %d, finished communication phase\n", my_PE_num);
 	// set barrier here to make sure all current time-step calculations are synced before moving to next iteration
 	MPI_Barrier(MPI_COMM_WORLD);
 
+	printf("Went past MPI Barrier on PE# %d\n", my_PE_num);
         dt = 0.0; // reset largest temperature change
 
         // copy grid to old grid for next iteration, and find latest dt to see if steady-state is reached
@@ -132,6 +136,7 @@ int main(int argc, char *argv[]) {
 	      Temperature_last[i][j] = Temperature[i][j];
             }
         }
+	printf("Finished updating Temperature_last grid for next iteration on PE# %d\n", my_PE_num);
 
         // periodically print test values
         if((iteration % 100) == 0 && my_PE_num == 0) {
@@ -157,7 +162,7 @@ int main(int argc, char *argv[]) {
 void initialize(int numprocs, int my_PE_num){
 
     int i,j;
-
+    printf("Now inside initialize function of PE# %d\n", my_PE_num);
     // step 1: initialize all to 0, and set left side and right side
     for(i = 0; i <= SEC_ROWS+1; i++){
         for (j = 0; j <= COLUMNS+1; j++){
@@ -166,6 +171,7 @@ void initialize(int numprocs, int my_PE_num){
         }
     }
 
+    printf("Finished step 1, now on the step 2 of initialize function of PE# %d\n", my_PE_num);
     // step 2: set top side and bottom side
     if (my_PE_num == numprocs){
     	for(j = 0; j <= COLUMNS+1; j++) {
@@ -178,6 +184,7 @@ void initialize(int numprocs, int my_PE_num){
 		Temperature_last[SEC_ROWS+1][j] = 0.0;
 	}
     }
+    printf("Finished step 2 of initialization function of PE# %d\n", my_PE_num);
 }
 
 
