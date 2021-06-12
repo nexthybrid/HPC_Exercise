@@ -42,6 +42,7 @@ double Temperature_last[SEC_ROWS+2][COLUMNS+2]; // temperature grid from last it
 void initialize(int, int);
 void track_progress(int iteration);
 void output(int my_PE_num, int iteration);
+void output_full(int my_PE_num, int iteration);
 
 int main(int argc, char *argv[]) {
 
@@ -82,7 +83,7 @@ int main(int argc, char *argv[]) {
     // This initialize() function needs to be modified to take two inputs: numprocs, my_PE_num to assign correct B.C.s for each
     initialize(numprocs, my_PE_num);                   // initialize Temp_last including boundary conditions
     MPI_Barrier(MPI_COMM_WORLD);			// use barrier to make sure all grid is initialized before taking the output(0)
-    output(my_PE_num, 0);
+    output_full(my_PE_num, 0);
 
     // do until error is minimal (thermal steady-state reached) or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
@@ -155,10 +156,15 @@ int main(int argc, char *argv[]) {
 	//printf("Finished updating Temperature_last grid for next iteration on PE# %d\n", my_PE_num);
 
         // periodically print test values
-        if((iteration % 500) == 0 && my_PE_num == 0) {
+        if((iteration % 500) == 0 && my_PE_num == 3) {
  	    	track_progress(iteration);
 		fflush(stdout);
         }
+
+	// periodically print temperature grid
+	if(iteration % 500 == 0) {
+		output_full(my_PE_num, iteration);
+	}
 
 	iteration++;
     }
@@ -186,7 +192,8 @@ void initialize(int numprocs, int my_PE_num){
         for (j = 0; j <= COLUMNS+1; j++){
             Temperature_last[i][j] = 0.0;
         };
-	Temperature_last[i][COLUMNS+1] = my_PE_num/numprocs*100.0 + (100.0/ROWS)*i;
+	Temperature_last[i][COLUMNS+1] = my_PE_num*100.0/numprocs + (100.0/ROWS)*i; // IMPORTANT: the order of operation matters!
+	// In the above line, if my_PE_num/numprocs*100.0 is used, the result will always be zero due to int/int produces an int with rounding!
 	if(i % 50 == 0) printf("Temperature_last[%d][%d] of PE# %d initialized as %f\n",i,COLUMNS+1, my_PE_num, Temperature_last[i][COLUMNS+1]);
     }
 
@@ -215,7 +222,7 @@ void track_progress(int iteration) {
     printf("Finished track_progress(%d)", iteration);
 }
 
-// output the full 1000x1002 grid of temperatures. Using MPI_Barrier to make sure all PEs are caught up to print
+// output the semi-full 1000x1002 grid of temperatures. Using MPI_Barrier to make sure all PEs are caught up to print
 void output(int my_PE_num, int iteration) {
     FILE* fp;
     char filename[50];
@@ -236,4 +243,47 @@ void output(int my_PE_num, int iteration) {
 		};
 		MPI_Barrier(MPI_COMM_WORLD);	// use barrier inside the pe for loop to stop all PEs until all PEs have printed their share
 	}
+}
+
+// output the full 1002x1002 grid of temperatures including the horizontal and vertical padding boundaries.
+void output_full(int my_PE_num, int iteration) {
+	FILE* fp2;
+	char filename[50];
+	sprintf(filename, "outputf%d.csv", iteration);
+
+        for (int pe = 0; pe <= 3; pe++) {
+                if(my_PE_num == pe) {
+                        fp2 = fopen(filename, "a");      // "a" for append to a file, "w" for write / rewrite a file
+
+			//for PE = 0 add the top row with 1x1002 elements
+			if(my_PE_num == 0) {
+				for(int jj = 0; jj <= COLUMNS; jj++) {
+					fprintf(fp2, "%5.2f,", Temperature_last[0][jj]);
+				};
+				fprintf(fp2, "5.2f\n", Temperature_last[0][COLUMNS+1]);
+			};
+
+			// for any PE print the 250x1002 grid elements
+                        for(int i = 1; i <= SEC_ROWS; i++){     // for each PE, print 250x1002 grid, includ. left and right padding
+                                for(int j = 0; j <= COLUMNS; j++){
+                                        fprintf(fp2, "%5.2f,",Temperature_last[i][j]);
+                                };
+                                fprintf(fp2, "%5.2f\n",Temperature_last[i][COLUMNS+1]); // use \n to start a new row in csv file
+                        };
+
+			// for PE = 3 add the bottom padding row with 1x1002 elements
+			if(my_PE_num == 3) {
+				for(int jjj = 0; jjj <= COLUMNS; jjj++) {
+					fprintf(fp2, "%5.2f,", Temperature_last[SEC_ROWS+1][jjj]);
+					//printf("%5.2f",Temperature_last[SEC_ROWS+1][jjj]);	// for debug
+				};
+				fprintf(fp2, "5.2f\n", Temperature_last[SEC_ROWS+1][COLUMNS+1]);
+			};
+                        fflush(fp2);
+                        fclose(fp2);
+                };
+                MPI_Barrier(MPI_COMM_WORLD);    // use barrier inside the pe for loop,
+		// such that it blocks progress at each loop: PE = 0, PE = 1, PE = 2, PE = 3,
+		// to stop all PEs until all PEs have printed their share in the correct order.
+        }
 }
