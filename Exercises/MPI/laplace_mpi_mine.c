@@ -51,10 +51,6 @@ int main(int argc, char *argv[]) {
     int iteration=1;                                     // current iteration
     double dt=100;                                       // largest change in t
     struct timeval start_time, stop_time, elapsed_time;  // timers
-    /*
-    printf("Maximum iterations [100-4000]?\n");
-    scanf("%d", &max_iterations);*/
-
 
     // the usual MPI startup routines
     int my_PE_num, numprocs;
@@ -98,8 +94,8 @@ int main(int argc, char *argv[]) {
                                             	    Temperature_last[i][j+1] + Temperature_last[i][j-1]);
 		}
 	}
-
 	//printf("In while loop of PE# %d, finished main calculation on iteration# %d\n", my_PE_num, iteration);
+
 	// COMMUNICATION PHASE: send and receive padding rows for next iteration
 	// Sending and receiving order (after main calculation of Temperature, which is a temporary variable):
 	//
@@ -150,7 +146,7 @@ int main(int argc, char *argv[]) {
             for(j = 1; j <= COLUMNS; j++){
 	      dt = fmax( fabs(Temperature[i][j]-Temperature_last[i][j]), dt);
 	      Temperature_last[i][j] = Temperature[i][j];
-//	      if (i == 995 && j == 995) printf("Temperature_last[995][995]=%f and Temperature_last[1001][1001] = %f\n",Temperature_last[995][995],Temperature_last[1001][1001]);
+	      // if (i == 995 && j == 995) printf("Temperature_last[995][995]=%f and Temperature_last[1001][1001] = %f\n",Temperature_last[995][995],Temperature_last[1001][1001]);
             }
         }
 	//printf("Finished updating Temperature_last grid for next iteration on PE# %d\n", my_PE_num);
@@ -187,8 +183,7 @@ void initialize(int numprocs, int my_PE_num){
     int i,j;
     printf("Now inside initialize function of PE# %d\n", my_PE_num);
     // step 1: initialize all 252x1002 to 0 for cleanup, and set left side and right side
-    //for(i = SEC_ROWS*my_PE_num; i <= SEC_ROWS*my_PE_num+SEC_ROWS+1; i++){
-    for(i = 0; i<= SEC_ROWS+1; i++) {	// now every PE gets to initialize the whole 1002x1002
+    for(i = 0; i<= SEC_ROWS+1; i++) {	// now every PE gets to initialize the whole 252x1002
         for (j = 0; j <= COLUMNS+1; j++){
             Temperature_last[i][j] = 0.0;
         };
@@ -196,12 +191,11 @@ void initialize(int numprocs, int my_PE_num){
 	// In the above line, if my_PE_num/numprocs*100.0 is used, the result will always be zero due to int/int produces an int with rounding!
 	if(i % 50 == 0) printf("Temperature_last[%d][%d] of PE# %d initialized as %f\n",i,COLUMNS+1, my_PE_num, Temperature_last[i][COLUMNS+1]);
     }
-
     //printf("Finished step 1, now on the step 2 of initialize function of PE# %d\n", my_PE_num);
+
     // step 2: set top side and bottom side, WARNING: DON'T RUIN THE LEFT-RIGHT INITILIZATION ABOVE
     if (my_PE_num == numprocs-1){	// only the bottom piece has a heating element on horizontal boundary
     	for(j = 0; j <= COLUMNS+1; j++) {
-        	//Temperature_last[SEC_ROWS*my_PE_num][j] = 0.0;
         	Temperature_last[SEC_ROWS+1][j] = (100.0/COLUMNS)*j;
 		if(j % 200 == 0) printf("Temperature_last[%d][%d] initialized as %f\n",SEC_ROWS+1,j,Temperature_last[SEC_ROWS+1][j]);
     	}
@@ -209,10 +203,8 @@ void initialize(int numprocs, int my_PE_num){
     printf("Initialization Done on PE# %d\n", my_PE_num);
 }
 
-
 // print diagonal in bottom right corner of the 252x1002 piece
 void track_progress(int iteration) {
-
     int i;
     printf("---------- Iteration number: %d ------------\n", iteration);
     for(i = 0; i <= 5; i++) {
